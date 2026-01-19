@@ -1,11 +1,15 @@
 import Phaser from "phaser";
 import { toddlerData } from "./toddlerData.js";
 
-const CARD_BG = 0x101827;
-const CARD_STROKE = 0x2a3a5d;
-const CARD_STROKE_HI = 0x4d8aff;
-const CARD_STROKE_OK = 0x25c26e;
-const CARD_STROKE_BAD = 0xd93d3d;
+const CANVAS_BG = 0xffffff;
+const CARD_BG = 0xffffff;
+const CARD_BG_HI = 0xf6f8ff;
+const CARD_STROKE = 0xd2d8ea;
+const CARD_STROKE_HI = 0x2563eb;
+const CARD_STROKE_OK = 0x16a34a;
+const CARD_STROKE_BAD = 0xdc2626;
+const TEXT = 0x0b1220;
+const TEXT_MUTED = 0x475569;
 
 function shuffleInPlace(arr, rng) {
   for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -36,6 +40,27 @@ function fitImageWithin(image, maxW, maxH) {
   return image;
 }
 
+function roundedRectContains(hitArea, x, y) {
+  const hw = hitArea.w / 2;
+  const hh = hitArea.h / 2;
+  const r = hitArea.r;
+
+  if (x < -hw || x > hw || y < -hh || y > hh) return false;
+
+  const innerX = hw - r;
+  const innerY = hh - r;
+
+  // inside the vertical or horizontal "cross" (not in rounded corners)
+  if (Math.abs(x) <= innerX || Math.abs(y) <= innerY) return true;
+
+  // check the corner circle
+  const cx = x > 0 ? innerX : -innerX;
+  const cy = y > 0 ? innerY : -innerY;
+  const dx = x - cx;
+  const dy = y - cy;
+  return dx * dx + dy * dy <= r * r;
+}
+
 export class MatchGameScene extends Phaser.Scene {
   constructor() {
     super({ key: "MatchGameScene" });
@@ -57,13 +82,13 @@ export class MatchGameScene extends Phaser.Scene {
   }
 
   create() {
-    this.cameras.main.setBackgroundColor("#0b0f17");
+    this.cameras.main.setBackgroundColor(CANVAS_BG);
 
     this.title = this.add
       .text(16, 14, "Match", {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         fontSize: "18px",
-        color: "#e8eefc",
+        color: "#0b1220",
       })
       .setDepth(1000);
 
@@ -71,7 +96,7 @@ export class MatchGameScene extends Phaser.Scene {
       .text(16, 38, "Drag the correct Bliss symbol onto the left card.", {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         fontSize: "13px",
-        color: "#a9b7d6",
+        color: "#475569",
       })
       .setDepth(1000);
 
@@ -97,7 +122,7 @@ export class MatchGameScene extends Phaser.Scene {
     }
     this.optionIds = shuffleInPlace([...optionSet], this.rng);
 
-    this.loadBlissAssets(this.optionIds).then(() => {
+    this.loadAssets({ blissIds: this.optionIds, pictoId: this.correctId }).then(() => {
       this.createLeftPrompt();
       this.createRightOptions();
       this.updateProgress();
@@ -113,20 +138,30 @@ export class MatchGameScene extends Phaser.Scene {
     this.draggables = [];
   }
 
-  loadBlissAssets(ids) {
+  loadAssets({ blissIds, pictoId }) {
     return new Promise((resolve) => {
       const baseUrl = this.game.config?.baseUrl || "";
-      const base = `${baseUrl}bliss_svg_id/`;
+      const blissBase = `${baseUrl}bliss_svg_id/`;
+      const pictoBase = `${baseUrl}picto/`;
 
       let toLoad = 0;
-      for (const id of ids) {
+      for (const id of blissIds) {
         const key = `bliss-${id}`;
         if (this.textures.exists(key)) continue;
         toLoad += 1;
         // Do not force width/height here. Many source SVGs have `preserveAspectRatio="none"`,
         // so resizing to a square would distort them. Let the browser rasterize at the SVGs
         // intrinsic size (inches -> px) and scale at render time.
-        this.load.svg(key, `${base}${id}.svg`);
+        this.load.svg(key, `${blissBase}${id}.svg`);
+      }
+
+      if (pictoId && Number.isFinite(pictoId)) {
+        const pid = Number(pictoId);
+        const key = `picto-${pid}`;
+        if (!this.textures.exists(key)) {
+          toLoad += 1;
+          this.load.image(key, `${pictoBase}${pid}.png`);
+        }
       }
 
       if (toLoad === 0) {
@@ -144,25 +179,32 @@ export class MatchGameScene extends Phaser.Scene {
   createLeftPrompt() {
     const sym = this.correctId ? this.byId.get(this.correctId) : null;
     const label = sym?.primary || "";
+    const pictoKey = this.correctId ? `picto-${this.correctId}` : null;
 
     const cardBg = this.makeCard({
       width: 360,
       height: 260,
       stroke: CARD_STROKE_HI,
-      fill: 0x0c1424,
+      fill: CARD_BG_HI,
     });
 
-    const placeholder = this.add
-      .text(0, 0, label ? label.toUpperCase() : "?", {
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-        fontSize: "34px",
-        color: "#e8eefc",
-        align: "center",
-        wordWrap: { width: 320 },
-      })
-      .setOrigin(0.5);
+    let content;
+    if (pictoKey && this.textures.exists(pictoKey)) {
+      content = fitImageWithin(this.add.image(0, 0, pictoKey).setOrigin(0.5), 280, 200);
+    }
+    else {
+      content = this.add
+        .text(0, 0, label ? label.toUpperCase() : "?", {
+          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+          fontSize: "34px",
+          color: "#0b1220",
+          align: "center",
+          wordWrap: { width: 320 },
+        })
+        .setOrigin(0.5);
+    }
 
-    const container = this.add.container(0, 0, [cardBg, placeholder]);
+    const container = this.add.container(0, 0, [cardBg, content]);
     container.setSize(360, 260);
     container.setDataEnabled();
     container.setData("id", this.correctId);
@@ -182,16 +224,13 @@ export class MatchGameScene extends Phaser.Scene {
             .text(0, 0, String(id), {
               fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
               fontSize: "18px",
-              color: "#e8eefc",
+              color: "#0b1220",
             })
             .setOrigin(0.5);
 
       const container = this.add.container(0, 0, [cardBg, img]);
       container.setSize(170, 120);
-      container.setInteractive(
-        new Phaser.Geom.Rectangle(-85, -60, 170, 120),
-        Phaser.Geom.Rectangle.Contains
-      );
+      container.setInteractive({ w: 170, h: 120, r: 16 }, roundedRectContains);
       this.input.setDraggable(container);
 
       container.setDataEnabled();
@@ -233,7 +272,7 @@ export class MatchGameScene extends Phaser.Scene {
     const g = this.leftPrompt.list[0];
     if (!g) return;
     g.clear();
-    g.fillStyle(0x0c1424, 1);
+    g.fillStyle(CARD_BG_HI, 1);
     g.fillRoundedRect(-180, -130, 360, 260, 18);
     g.lineStyle(6, strokeColor, 1);
     g.strokeRoundedRect(-180, -130, 360, 260, 18);
