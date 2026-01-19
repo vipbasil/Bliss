@@ -1,0 +1,60 @@
+BCI-AV#,English,POS,Derivation - explanation
+12357,"airplane,aeroplane,plane",YELLOW,(wings + wheel) - Character (superimposed)
+12380,"dog,canine_(animal),canid",YELLOW,(animal + curved line (representing a tail): the waving tail being characteristic of a dog) - Character (superimposed)
+12383,"cat,feline_(animal),felid",YELLOW,(animal + small curved lines (representing claws): the claws being characteristic of cats) - Character (superimposed)
+12405,apple,YELLOW,(pictograph of apple with stem) - Character
+12577,arm,YELLOW,(pictograph: symbol suggests an arm bent upward) - Character
+12621,ball,YELLOW,(pictograph: symbol suggests a small stitched ball) - Character
+12622,balloon,YELLOW,(pictograph) - Character
+12623,banana,YELLOW,(pictograph with stem: crescent-shaped fruit suggesting a banana) - Character
+12649,bed,YELLOW,(pictograph: symbol suggests a bed with a pillow at the head) - Character
+12837,bird,YELLOW,(pictograph: symbol suggests the wings and feet of a bird) - Character
+12840,"duck,bird_(water),waterbird,waterfowl,seabird,seafowl",YELLOW,"(bird + water [modification, under earthline]: aquatic bird) - Character (superimposed - modified)"
+12860,"block,brick",YELLOW,(pictograph: symbol suggests a three-dimensional block. It is half the size of box.) - Character
+12875,book,YELLOW,(pictograph: symbol suggests an open book. It can also be explained as: two page symbols.) - Character
+12880,"bottle,flask",YELLOW,(pictograph: suggests bottle with body and neck) - Character
+12895,"bread,loaf_of_bread,loaf",YELLOW,(pictograph: symbol suggests a loaf of bread) - Character
+12916,bubble(s),YELLOW,"(gas + pointer, to bubble) - Character (superimposed - pointer)"
+13089,"bus,coach",YELLOW,(vehicle_(long) + pictograph of a steering wheel: suggests a bus with many wheels and a steering wheel) - Character (superimposed)
+13121,"car,automobile,motor_vehicle",YELLOW,(vehicle + pictograph of a steering wheel: suggests a car with a steering wheel) - Character (superimposed)
+13148,"chair,seat",YELLOW,(pictograph) - Character
+13157,cheese,YELLOW,(pictograph: symbol suggests a wedge of cheese) - Character
+13403,"container,bowl,holder,pouch,basket",YELLOW,(pictograph: symbol suggests the outline of a bowl) - Character
+13621,"mug,cup",YELLOW,(pictograph: symbol suggests a cup or a glass with a handle) - Character
+13690,"dish,plate,platter",YELLOW,(pictograph: symbol suggests a dish) - Character
+13866,door,YELLOW,(pictograph: symbol suggests a doorway) - Character
+13894,ear,YELLOW,(pictograph: symbol suggests a side view of an ear) - Character
+13912,"egg,ovum_(2)",YELLOW,(pictograph) SYMBOL SYNONYM - Character
+14133,eye,YELLOW,(pictograph: symbol suggests an eye with a pupil in the centre) - Character
+14377,food,YELLOW,(mouth + earth [half-sized]: what the mouth gets from the earth) - Character (superimposed)
+14379,foot,YELLOW,"(legs and feet + pointer, to foot) - Character (superimposed - pointer)"
+14389,fork,YELLOW,(pictograph: symbol suggests a fork. The diagonal orientation of fork is the same as that of spoon and knife.) - Character
+14405,fruit,YELLOW,"(pictograph: symbol suggests a piece of fruit with a curved stem, in the position it would have if hanging from a tree) - Character"
+14422,garden,YELLOW,(flower + earth: place with flowers) - Character (superimposed)
+14667,hand,YELLOW,(pictograph: symbol reproduces the shape formed by the thumb and the index finger) - Character
+14689,head,YELLOW,"(pictograph: symbol suggests a human head, with two lines indicating nose and mouth) - Character"
+14897,horse,YELLOW,(animal + pictograph of horse's head and neck) - Character (superimposed)
+14905,"house,building,dwelling,residence",YELLOW,(foundation + protection: pictograph of the outline of a house.The symbol can also be explained as: combination of enclosure and protection.) - Character (superimposed)
+15188,leg,YELLOW,"(legs and feet + pointer, to leg) - Character (superimposed - pointer)"
+15666,mouth,YELLOW,(pictograph: symbol suggests a round open mouth) - Character
+15732,nose,YELLOW,(pictograph: symbol suggests the side view of a nose) - Character
+15969,park,YELLOW,(flower + earth + tree: place with flowers and trees) - Character (superimposed)
+16165,"seat,sitting_(sitting_person)",YELLOW,(person [modification]: in sitting position) - Character (modified)
+16175,pig,YELLOW,(animal + pictograph of curly tail) - Character (superimposed)
+16177,"pillow,cushion",YELLOW,"(bed + pointer, to pillow) - Character (superimposed - pointer)"
+16505,rice,YELLOW,(grain + water_(ground_level): grain that grows in water) - Character (superimposed)
+16968,shower,YELLOW,(room + water + down: room where water pours down for bathing) - Character (superimposed)
+16992,"bath,washing",YELLOW,(container + water) - Character (superimposed)
+17218,"soup,broth",YELLOW,(dish + liquid) - Character (superimposed)
+17233,spoon,YELLOW,(pictograph: symbol suggests a spoon. The diagonal orientation of spoon is the same as that of fork and knife.) - Character
+17265,"stomach,abdomen,belly",YELLOW,(body + pointer to stomach) - Character (superimposed - pointer)
+17493,table,YELLOW,(pictograph: symbol suggests the side view of a table) - Character
+17517,teeth,YELLOW,(pictograph: symbol suggests two teeth) - Character
+17747,toilet,YELLOW,(seat + water_(ground_level): water closet) - Character (superimposed)
+17781,"truck,lorry",YELLOW,"(transport,transportation + car: large motor vehicle for carrying things) - Character (superimposed)"
+18028,"wagon,cart,truck",YELLOW,"(vehicle + diagonal line, representing a handle) - Character (superimposed)"
+18209,"water,fluid,liquid",YELLOW,"(symbol looks like a wave, suggesting water or liquid) - Character"
+22375,candy,YELLOW,"(pictograph) - Character Preferred NEW SYNONYM, replacing 13118"
+22578,cup,YELLOW,(pictograph) - Character
+24920,"medicine,medical_practice",YELLOW,"(symbol suggests a modified caduceus (modeled after the staff with a snake - of Hermes), the traditional medical symbol) - Character"
+25822,tooth,YELLOW,(pictograph) - Character

@@ -1,0 +1,114 @@
+# Words to include for a "toddler nouns" starter set (POS=YELLOW, derivation contains "- Character").
+# One token per line. Matching is done against normalized tokens from the English column.
+
+# People / family (note: many are POS=BLUE in the main CSV, so they won't appear in the YELLOW-only output)
+
+# Food & drink
+food
+water
+milk
+juice
+fruit
+apple
+banana
+bread
+rice
+egg
+cheese
+soup
+candy
+cookie
+
+# Eating / drinking items
+cup
+mug
+bottle
+straw
+spoon
+fork
+plate
+dish
+bowl
+
+# Body parts
+head
+eye
+ear
+nose
+mouth
+tooth
+teeth
+hand
+foot
+leg
+arm
+stomach
+abdomen
+belly
+
+# Hygiene / bathroom
+toilet
+bathroom
+washroom
+diaper
+nappy
+soap
+toothbrush
+washcloth
+shower
+bath
+
+# Toys / play
+toy
+ball
+book
+doll
+balloon
+bubble
+block
+brick
+jigsaw_puzzle
+puzzle
+coloring_book
+colouring_book
+music
+song
+
+# Animals
+dog
+cat
+bird
+duck
+horse
+pig
+bear
+
+# Home & places
+home
+house
+park
+garden
+playground
+playroom
+
+# Transport
+car
+bus
+truck
+airplane
+aeroplane
+plane
+
+# Furniture / home objects
+chair
+seat
+table
+bed
+pillow
+cushion
+door
+
+# Comfort / health
+pain
+medicine
+

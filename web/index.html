@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bliss Toddler Translator</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="header">
+      <div class="header__title">Bliss Toddler Translator</div>
+      <div class="header__subtitle">
+        Uses <code>Docs/toddler_nouns_yellow.csv</code> (POS=YELLOW nouns).
+      </div>
+    </header>
+
+    <main class="main">
+      <section class="panel">
+        <h2>English → Bliss</h2>
+        <div class="row">
+          <label class="label" for="englishInput">English</label>
+          <input
+            id="englishInput"
+            class="input"
+            placeholder="Type: milk, apple, toothbrush…"
+            autocomplete="off"
+          />
+          <button id="translateEnglishBtn" class="btn">Translate</button>
+          <button id="clearSentenceBtn" class="btn btn--secondary">Clear</button>
+        </div>
+        <div class="hint">
+          Tip: use search below for fuzzy matches, then click a symbol to add it.
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Search (English)</h2>
+        <div class="row">
+          <label class="label" for="searchInput">Search</label>
+          <input
+            id="searchInput"
+            class="input"
+            placeholder="Search: bath, water, toy…"
+            autocomplete="off"
+          />
+          <span id="searchCount" class="badge"></span>
+        </div>
+        <div id="results" class="grid" aria-live="polite"></div>
+      </section>
+
+      <section class="panel">
+        <h2>Bliss → English</h2>
+        <div class="row">
+          <label class="label" for="idsInput">IDs</label>
+          <input
+            id="idsInput"
+            class="input"
+            placeholder="Paste ids: 15468 12405 17747"
+            autocomplete="off"
+          />
+          <button id="loadIdsBtn" class="btn btn--secondary">Load</button>
+        </div>
+
+        <div class="sentence">
+          <div class="sentence__label">Selected symbols</div>
+          <div id="sentence" class="sentence__strip"></div>
+        </div>
+
+        <div class="output">
+          <div class="output__label">English output</div>
+          <div id="englishOutput" class="output__text"></div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>
+        Images loaded from <code>bliss_h188_documentation_id_png/&lt;id&gt;.png</code>.
+      </div>
+    </footer>
+
+    <script src="./toddlerData.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
+

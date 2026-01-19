@@ -1,0 +1,10 @@
+# Exclude entries that are inappropriate/noisy for a toddler starter set.
+# One numeric id per line.
+
+17990
+23815
+24726
+24801
+25873
+29332
+

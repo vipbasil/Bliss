@@ -1,0 +1,18 @@
+{
+  "name": "bliss-toddler-phaser-vite",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "build:data": "python3 scripts/build_toddler_translator_data.py --in-csv Docs/toddler_nouns_yellow.csv --out-js src/toddlerData.js --format esm",
+    "build:web-data": "python3 scripts/build_toddler_translator_data.py --in-csv Docs/toddler_nouns_yellow.csv --out-js web/toddlerData.js --format window"
+  },
+  "dependencies": {
+    "phaser": "^3.80.1"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}
