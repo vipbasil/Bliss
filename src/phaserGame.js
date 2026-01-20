@@ -1,4 +1,5 @@
 import Phaser from "phaser";
+import { MapScene } from "./mapScene.js";
 import { MatchGameScene } from "./matchGameScene.js";
 
 export function createGame(parentId) {
@@ -12,6 +13,6 @@ export function createGame(parentId) {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
     },
-    scene: [MatchGameScene],
+    scene: [MapScene, MatchGameScene],
   });
 }

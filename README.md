@@ -12,7 +12,7 @@ Translator prototype using the toddler noun subset (`POS=YELLOW`) from `Docs/tod
 This game expects optional “picture cards” at `public/picto/<id>.png`. If present, the left prompt will show the picture; otherwise it falls back to the concept name.
 
 - Install: `python3 -m pip install gradio-client pillow`
-- Generate: `python3 scripts/generate_pictos_flux.py --limit 10` (remove `--limit` for all)
+- Generate: `python3 scripts/generate_pictos_flux.py --limit 10` (remove `--limit` for all). If the endpoint changes, pass `--endpoint <url>`.
 
 ## Build (production)
 

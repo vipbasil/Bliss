@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { toddlerData } from "./toddlerData.js";
+import { excludedNotCharacterIds } from "./excludedNotCharacterIds.js";
 
 const CANVAS_BG = 0xffffff;
 const CARD_BG = 0xffffff;
@@ -10,6 +11,14 @@ const CARD_STROKE_OK = 0x16a34a;
 const CARD_STROKE_BAD = 0xdc2626;
 const TEXT = 0x0b1220;
 const TEXT_MUTED = 0x475569;
+
+const PROGRESS_KEY = "bliss.progress.v1";
+const MAX_STAGE = 4;
+const PROMOTE_STREAK = 5;
+const WINDOW_ATTEMPTS = 8;
+const MAX_ERRORS_IN_WINDOW = 1;
+const LEARNED_DISTRACTOR_P = 0.18;
+const REVIEW_TARGET_P = 0.2;
 
 function shuffleInPlace(arr, rng) {
   for (let i = arr.length - 1; i > 0; i -= 1) {
@@ -61,6 +70,134 @@ function roundedRectContains(hitArea, x, y) {
   return dx * dx + dy * dy <= r * r;
 }
 
+function safeParseJSON(s) {
+  try {
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function nowMs() {
+  return Date.now();
+}
+
+function normalizeState(raw) {
+  if (!raw || typeof raw !== "object") return null;
+  if (raw.version !== 1) return null;
+  if (!raw.symbols || typeof raw.symbols !== "object") return null;
+  return raw;
+}
+
+function initProgress(symbolIds) {
+  const symbols = {};
+  for (const id of symbolIds) {
+    symbols[String(id)] = {
+      status: "NOT_INTRODUCED",
+      success_streak: 0,
+      total_attempts: 0,
+      last_seen_timestamp: 0,
+      recent: [],
+      stage4_success: false,
+    };
+  }
+
+  const first = symbolIds[0];
+  if (first != null) symbols[String(first)].status = "LEARNING";
+
+  return {
+    version: 1,
+    currentLearningId: first ?? null,
+    stage: 1,
+    symbols,
+  };
+}
+
+function loadProgress(symbolIds) {
+  let state = null;
+  try {
+    state = normalizeState(safeParseJSON(localStorage.getItem(PROGRESS_KEY) || ""));
+  } catch {
+    state = null;
+  }
+
+  if (!state) state = initProgress(symbolIds);
+
+  // Ensure newly-added IDs exist.
+  for (const id of symbolIds) {
+    const k = String(id);
+    if (!state.symbols[k]) {
+      state.symbols[k] = {
+        status: "NOT_INTRODUCED",
+        success_streak: 0,
+        total_attempts: 0,
+        last_seen_timestamp: 0,
+        recent: [],
+        stage4_success: false,
+      };
+    }
+  }
+
+  // Enforce "single learning symbol" invariant.
+  const learningIds = [];
+  for (const id of symbolIds) {
+    if (state.symbols[String(id)]?.status === "LEARNING") learningIds.push(id);
+  }
+  const desired = symbolIds.includes(state.currentLearningId) ? state.currentLearningId : null;
+  const keeper = desired ?? learningIds[0] ?? symbolIds[0] ?? null;
+
+  for (const id of learningIds) {
+    if (id !== keeper) state.symbols[String(id)].status = "LEARNED";
+  }
+  if (keeper != null) {
+    state.currentLearningId = keeper;
+    state.symbols[String(keeper)].status = "LEARNING";
+  }
+
+  state.stage = Math.max(1, Math.min(MAX_STAGE, Number(state.stage) || 1));
+  return state;
+}
+
+function saveProgress(state) {
+  try {
+    localStorage.setItem(PROGRESS_KEY, JSON.stringify(state));
+  } catch {
+    // ignore (private mode / disabled storage)
+  }
+}
+
+function countErrorsInWindow(recent, windowSize) {
+  if (!Array.isArray(recent)) return 0;
+  const tail = recent.slice(-windowSize);
+  return tail.reduce((acc, ok) => acc + (ok ? 0 : 1), 0);
+}
+
+function pickLearnedDistractors(learnedIds, needed, rng, p) {
+  if (needed <= 0) return [];
+  const shuffled = shuffleInPlace([...learnedIds], rng);
+  const picked = [];
+  const seen = new Set();
+
+  for (const id of shuffled) {
+    if (picked.length >= needed) break;
+    if (rng() < p && !seen.has(id)) {
+      picked.push(id);
+      seen.add(id);
+    }
+  }
+
+  // Always fill remaining slots (early game has few learned symbols).
+  for (const id of shuffled) {
+    if (picked.length >= needed) break;
+    if (!seen.has(id)) {
+      picked.push(id);
+      seen.add(id);
+    }
+  }
+
+  return picked.slice(0, needed);
+}
+
 export class MatchGameScene extends Phaser.Scene {
   constructor() {
     super({ key: "MatchGameScene" });
@@ -72,20 +209,33 @@ export class MatchGameScene extends Phaser.Scene {
     this.leftHitArea = null;
     this.draggables = [];
     this.rng = mulberry32(Date.now());
-    this.progressInSet = 0;
+    this.progress = null;
+    this.stageUsed = 1;
+    this.isReviewRound = false;
   }
 
   init() {
     const symbols = toddlerData?.symbols || [];
-    this.symbols = symbols;
-    this.byId = new Map(symbols.map((s) => [s.id, s]));
+    this.symbols = symbols.filter((s) => !excludedNotCharacterIds.has(s.id));
+    this.byId = new Map(this.symbols.map((s) => [s.id, s]));
+    this.progress = loadProgress(this.symbols.map((s) => s.id));
   }
 
   create() {
     this.cameras.main.setBackgroundColor(CANVAS_BG);
 
+    const home = this.add
+      .text(18, 16, "← Puzzles", {
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+        fontSize: "14px",
+        color: "#1d4ed8",
+      })
+      .setDepth(1200)
+      .setInteractive({ useHandCursor: true });
+    home.on("pointerdown", () => this.scene.start("MapScene"));
+
     this.title = this.add
-      .text(16, 14, "Match", {
+      .text(18, 40, "Match", {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         fontSize: "18px",
         color: "#0b1220",
@@ -93,7 +243,7 @@ export class MatchGameScene extends Phaser.Scene {
       .setDepth(1000);
 
     this.hint = this.add
-      .text(16, 38, "Drag the correct Bliss symbol onto the left card.", {
+      .text(18, 64, "Drag the correct Bliss symbol onto the left card.", {
         fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
         fontSize: "13px",
         color: "#475569",
@@ -111,21 +261,54 @@ export class MatchGameScene extends Phaser.Scene {
   buildQuestion() {
     this.clearQuestion();
 
-    const ids = this.symbols.map((s) => s.id);
-    shuffleInPlace(ids, this.rng);
-    this.correctId = ids[0] ?? null;
+    const state = this.progress;
+    if (!state || state.currentLearningId == null) return;
 
-    const optionCount = 6;
-    const optionSet = new Set([this.correctId]);
-    for (let i = 1; i < ids.length && optionSet.size < optionCount; i += 1) {
-      optionSet.add(ids[i]);
+    const learningId = state.currentLearningId;
+    const learningKey = String(learningId);
+    if (!state.symbols[learningKey]) return;
+
+    const learnedIds = this.symbols
+      .map((s) => s.id)
+      .filter((id) => state.symbols[String(id)]?.status === "LEARNED");
+
+    // 20% of rounds: review a LEARNED symbol as the target (if any exist).
+    let targetId = learningId;
+    this.isReviewRound = false;
+    if (learnedIds.length > 0 && this.rng() < REVIEW_TARGET_P) {
+      targetId = learnedIds[Math.floor(this.rng() * learnedIds.length)];
+      this.isReviewRound = targetId !== learningId;
     }
-    this.optionIds = shuffleInPlace([...optionSet], this.rng);
+
+    this.correctId = targetId;
+
+    const targetStage = Math.max(1, Math.min(MAX_STAGE, state.stage || 1));
+    // Review rounds should still include the learning symbol as a distractor to keep it in circulation.
+    const minChoices = this.isReviewRound ? 2 : 1;
+    const targetChoices = Math.min(
+      Math.max(minChoices, targetStage),
+      this.isReviewRound ? 2 + learnedIds.length : 1 + learnedIds.length
+    );
+    this.stageUsed = targetChoices;
+
+    const base = new Set([targetId]);
+    if (this.isReviewRound) base.add(learningId);
+
+    const distractorPool = learnedIds.filter((id) => !base.has(id));
+    const learnedDistractors = pickLearnedDistractors(
+      distractorPool,
+      Math.max(0, targetChoices - base.size),
+      this.rng,
+      LEARNED_DISTRACTOR_P
+    );
+
+    this.optionIds = shuffleInPlace([...base, ...learnedDistractors], this.rng);
 
     this.loadAssets({ blissIds: this.optionIds, pictoId: this.correctId }).then(() => {
       this.createLeftPrompt();
       this.createRightOptions();
       this.updateProgress();
+      this.updateHint();
       this.layout();
     });
   }
@@ -323,10 +506,9 @@ export class MatchGameScene extends Phaser.Scene {
 
   updateProgress() {
     this.progressDots.removeAll(true);
-    if (!this.correctId) return;
-    const total = 5;
-    const filledCount = Math.min(total, this.progressInSet);
-    this.progressDots.removeAll(true);
+    if (!this.progress) return;
+    const total = MAX_STAGE;
+    const filledCount = Math.max(1, Math.min(total, this.progress.stage || 1));
     const dotSpacing = 14;
     const startX = -((total - 1) * dotSpacing) / 2;
     for (let i = 0; i < total; i += 1) {
@@ -335,6 +517,16 @@ export class MatchGameScene extends Phaser.Scene {
       const dot = this.add.circle(startX + i * dotSpacing, 0, 5, color, 1);
       this.progressDots.add(dot);
     }
+  }
+
+  updateHint() {
+    const stage = this.progress?.stage || 1;
+    const stageLabel = Math.max(1, Math.min(MAX_STAGE, stage));
+    this.hint.setText(
+      this.isReviewRound
+        ? `Review: match a learned symbol. Stage ${stageLabel}/${MAX_STAGE}.`
+        : `Drag the matching Bliss symbol. Stage ${stageLabel}/${MAX_STAGE}.`
+    );
   }
 
   updateHoverLeftForCard(card) {
@@ -373,6 +565,7 @@ export class MatchGameScene extends Phaser.Scene {
     const correct = card.getData("id") === this.correctId;
     if (!correct) {
       this.flashLeft(CARD_STROKE_BAD);
+      this.recordAttempt(false, this.correctId);
       this.tweens.add({
         targets: card,
         x: card.getData("homeX"),
@@ -384,8 +577,9 @@ export class MatchGameScene extends Phaser.Scene {
     }
 
     this.flashLeft(CARD_STROKE_OK);
-    this.progressInSet += 1;
+    const promoted = this.recordAttempt(true, this.correctId);
     this.updateProgress();
+    this.updateHint();
 
     this.tweens.add({
       targets: card,
@@ -399,35 +593,107 @@ export class MatchGameScene extends Phaser.Scene {
           alpha: 0,
           duration: 120,
           onComplete: () => {
-            if (this.progressInSet >= 5) {
-              this.progressInSet = 0;
-              const { width, height } = this.scale;
-              const msg = this.add
-                .text(width / 2, height / 2, "Great!", {
-                  fontFamily:
-                    "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
-                  fontSize: "44px",
-                  color: "#e8eefc",
-                })
-                .setOrigin(0.5)
-                .setDepth(2000);
-              this.tweens.add({
-                targets: msg,
-                alpha: 0,
-                duration: 650,
-                delay: 500,
-                onComplete: () => {
-                  msg.destroy();
-                  this.buildQuestion();
-                },
-              });
-              return;
-            }
-
+            if (promoted) this.showCelebration("Learned!");
             this.buildQuestion();
           },
         });
       },
     });
+  }
+
+  showCelebration(text) {
+    const { width, height } = this.scale;
+    const msg = this.add
+      .text(width / 2, height / 2, text, {
+        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial",
+        fontSize: "42px",
+        color: "#0b1220",
+        backgroundColor: "rgba(255,255,255,0.85)",
+        padding: { x: 18, y: 12 },
+      })
+      .setOrigin(0.5)
+      .setDepth(2000);
+    this.tweens.add({
+      targets: msg,
+      alpha: 0,
+      duration: 650,
+      delay: 450,
+      onComplete: () => msg.destroy(),
+    });
+  }
+
+  recordAttempt(ok, targetId) {
+    const state = this.progress;
+    if (!state || state.currentLearningId == null) return false;
+
+    const learningId = state.currentLearningId;
+    const targetKey = String(targetId);
+    const symState = state.symbols[targetKey];
+    if (!symState) return false;
+
+    symState.total_attempts = (symState.total_attempts || 0) + 1;
+    symState.last_seen_timestamp = nowMs();
+    if (!Array.isArray(symState.recent)) symState.recent = [];
+    symState.recent.push(Boolean(ok));
+    if (symState.recent.length > WINDOW_ATTEMPTS) symState.recent = symState.recent.slice(-WINDOW_ATTEMPTS);
+
+    // Only the current LEARNING symbol drives stage/progression/promotion.
+    const isLearningTarget = targetId === learningId;
+
+    if (ok) {
+      if (isLearningTarget) {
+        symState.success_streak = (symState.success_streak || 0) + 1;
+        if (this.stageUsed >= 4) symState.stage4_success = true;
+        state.stage = Math.min(MAX_STAGE, (state.stage || 1) + 1);
+      }
+    } else {
+      // Non-punitive: don't drop stage; don't wipe streak completely.
+      if (isLearningTarget) {
+        symState.success_streak = Math.max(0, (symState.success_streak || 0) - 1);
+      }
+    }
+
+    if (!isLearningTarget) {
+      saveProgress(state);
+      return false;
+    }
+
+    const learnedCount = this.symbols.filter(
+      (s) => state.symbols[String(s.id)]?.status === "LEARNED"
+    ).length;
+    const canReachStage4 = learnedCount >= 3;
+
+    const errorsInWindow = countErrorsInWindow(symState.recent, WINDOW_ATTEMPTS);
+    const eligible =
+      symState.success_streak >= PROMOTE_STREAK &&
+      errorsInWindow <= MAX_ERRORS_IN_WINDOW &&
+      (!canReachStage4 || symState.stage4_success);
+
+    if (!eligible) {
+      saveProgress(state);
+      return false;
+    }
+
+    // Promote learning -> learned, pick next not introduced.
+    symState.status = "LEARNED";
+    symState.success_streak = 0;
+    symState.stage4_success = false;
+
+    const next = this.symbols
+      .map((s) => s.id)
+      .find((id) => state.symbols[String(id)]?.status === "NOT_INTRODUCED");
+
+    if (next == null) {
+      state.currentLearningId = null;
+      state.stage = 1;
+      saveProgress(state);
+      return true;
+    }
+
+    state.currentLearningId = next;
+    state.stage = 1;
+    state.symbols[String(next)].status = "LEARNING";
+    saveProgress(state);
+    return true;
   }
 }

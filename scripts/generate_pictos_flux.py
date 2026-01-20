@@ -6,6 +6,7 @@ import csv
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 from dataclasses import dataclass
@@ -70,20 +71,82 @@ def build_gradio_args(prompt: str, p: FluxParams) -> list[object]:
     ]
 
 
+def _in_venv() -> bool:
+    base_prefix = getattr(sys, "base_prefix", None)
+    if base_prefix is None:
+        return False
+    return sys.prefix != base_prefix
+
+
+def _dep_error(extra: str | None = None) -> str:
+    hint = (
+        "Missing dependency: gradio_client.\n\n"
+        f"Python used: {sys.executable}\n"
+        f"Python version: {sys.version.split()[0]}\n\n"
+        "Install with:\n"
+        f'  "{sys.executable}" -m pip install gradio-client pillow\n'
+    )
+    if extra:
+        return f"{hint}\n{extra}"
+    return hint
+
+
+def _ensure_gradio_client(auto_install: bool) -> type:
+    try:
+        from gradio_client import Client  # type: ignore
+
+        return Client
+    except Exception as e:
+        if not auto_install:
+            raise SystemExit(_dep_error(f"Import error: {e}"))
+
+        pip_cmd = [sys.executable, "-m", "pip", "install"]
+        if not _in_venv():
+            pip_cmd.append("--user")
+        pip_cmd += ["gradio-client", "pillow"]
+
+        pip_result = subprocess.run(pip_cmd, capture_output=True, text=True)
+        if pip_result.returncode != 0:
+            ensurepip_cmd = [sys.executable, "-m", "ensurepip", "--upgrade"]
+            ensurepip_result = subprocess.run(ensurepip_cmd, capture_output=True, text=True)
+            if ensurepip_result.returncode == 0:
+                pip_result = subprocess.run(pip_cmd, capture_output=True, text=True)
+
+        if pip_result.returncode != 0:
+            extra = (
+                "Auto-install failed.\n\n"
+                f"Command: {' '.join(pip_cmd)}\n\n"
+                f"stdout:\n{pip_result.stdout}\n\n"
+                f"stderr:\n{pip_result.stderr}\n"
+            )
+            raise SystemExit(_dep_error(extra))
+
+        try:
+            from gradio_client import Client  # type: ignore
+
+            return Client
+        except Exception as e2:
+            raise SystemExit(_dep_error(f"Still cannot import after install: {e2}"))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Batch-generate toddler pictos via a Gradio FLUX endpoint."
     )
     parser.add_argument(
         "--endpoint",
-        default="https://caa0ba7f2d0549cc90.gradio.live/",
-        help="Gradio base URL (default: provided live link).",
+        default="https://dea985e8601d759ce0.gradio.live/",
+        help="Gradio base URL (default: current live link).",
     )
     parser.add_argument(
         "--in-csv",
         type=Path,
         default=Path("Docs/toddler_nouns_yellow.csv"),
         help="Input CSV (default: Docs/toddler_nouns_yellow.csv).",
+    )
+    parser.add_argument(
+        "--ids",
+        help="Optional comma-separated ids to generate (example: 12357,12405).",
     )
     parser.add_argument(
         "--out-dir",
@@ -129,14 +192,14 @@ def main() -> None:
         action="store_true",
         help="Overwrite existing images.",
     )
+    parser.add_argument(
+        "--auto-install-deps",
+        action="store_true",
+        help="Try installing missing Python deps automatically (dev convenience).",
+    )
     args = parser.parse_args()
 
-    try:
-        from gradio_client import Client  # type: ignore
-    except Exception:
-        raise SystemExit(
-            "Missing dependency: gradio_client. Install with: python3 -m pip install gradio-client pillow"
-        )
+    Client = _ensure_gradio_client(args.auto_install_deps)  # noqa: N806
 
     out_dir: Path = args.out_dir
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -163,6 +226,10 @@ def main() -> None:
     client = Client(args.endpoint)
 
     count = 0
+    only_ids: set[str] | None = None
+    if args.ids:
+        only_ids = {p.strip() for p in args.ids.split(",") if p.strip()}
+
     with args.in_csv.open("r", encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f)
         if not reader.fieldnames:
@@ -175,6 +242,8 @@ def main() -> None:
         for row in reader:
             symbol_id = (row.get("BCI-AV#") or "").strip()
             if not symbol_id.isdigit():
+                continue
+            if only_ids is not None and symbol_id not in only_ids:
                 continue
             concept = primary_concept(row.get("English") or "")
             if not concept:
@@ -213,4 +282,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
